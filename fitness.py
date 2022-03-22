@@ -47,9 +47,7 @@ class Fitness:
                     self.wp.insert(i - 2, [p, w])   
 def crossoverOrdered(ind1, ind2, items,items2):
     size = min(len(ind1), len(ind2))
-    #buradaki random subsequence lenghtin kaç olacağı sorulacak (4)
-    a=random.randint(0,size-4)
-    print("Random index " + str(a))
+    a=random.randint(0,size-5)
     subsequence1=ind1[a:a+4]
     subsequence2=ind2[a:a+4]
     temp1=[0]*size
@@ -94,14 +92,60 @@ def crossoverOrdered(ind1, ind2, items,items2):
         if adderIndex2 ==a:
             checker2=False
         counter2=counter2+1
-    print("Subsequence1 : " + str(subsequence1))
-    print("Subsequence2 : " + str(subsequence2))
-    print("Result1 : " + str(temp1))
-    print("Result2 : " + str(temp2))
-    print("Items New  : " + str(itemsNew))
-    print("Items New2  : " + str(itemsNew2))
     return ind1, ind2 ,itemsNew ,itemsNew2
+def crossoverPartialMapped(ind1, ind2, items,items2):
+    size = min(len(ind1), len(ind2))
+    a=random.randint(0,size-5)
+    subsequence1=ind1[a:a+4]
+    subsequence2=ind2[a:a+4]
+    temp1=[0]*size
+    temp2=[0]*size
+    itemsNew=[0]*size
+    itemsNew2=[0]*size
+    temp1[a:a+4] = subsequence2
+    temp2[a:a+4] = subsequence1
+    itemsNew[a:a+4]=items2[a:a+4]
+    itemsNew2[a:a+4]=items[a:a+4]
+    checker=True
+    counter=a+4
+    adderIndex1=a+4
+    while checker:
+        if counter == size:       
+            counter=0
+        temporary=ind1[counter]
+        if temporary  in subsequence2 :
+            while(temporary  in subsequence2):
+                temporary=subsequence1[subsequence2.index(temporary)]
+        temp1[adderIndex1] = temporary
+       #düzeltilecek ----- itemsNew[adderIndex1] =items[ind1.index(ind2[counter])]
+        if adderIndex1 ==size-1:
+                adderIndex1=0
+        else:
+            adderIndex1=adderIndex1+1
+        if adderIndex1 ==a:
+            checker=False
+        counter=counter+1
 
+    checker2=True
+    counter2=a+4
+    adderIndex2=a+4
+    while checker2:
+        if counter2 == size:       
+            counter2=0
+        temporary=ind2[counter2]
+        if temporary  in subsequence1 :
+            while(temporary  in subsequence1):
+                temporary=subsequence2[subsequence1.index(temporary)]
+        temp2[adderIndex2] = temporary
+       #düzeltilecek ----- itemsNew[adderIndex1] =items[ind1.index(ind2[counter])]
+        if adderIndex2 ==size-1:
+                adderIndex2=0
+        else:
+            adderIndex2=adderIndex2+1
+        if adderIndex2 ==a:
+            checker2=False
+        counter2=counter2+1
+    return temp1,temp2
 # Calculates distance of each city and stores these values in 2-D array
 def calculate_distances(coordinates):
     size = len(coordinates)
@@ -118,15 +162,31 @@ def calculate_distances(coordinates):
     return distances
 def exchangeMutation(cities,items):
     geneNumbers = len(cities)
+    itemsNew=[0]*geneNumbers
+    citiesNew=[0]*geneNumbers
+    itemsNew[0:geneNumbers]=items[0:geneNumbers]   
+    citiesNew[0:geneNumbers]=cities[0:geneNumbers]
     x1, x2 = numpy.random.choice(range(geneNumbers), 2, False)
-    print("Selected index :  ",x1)
-    print("Selected index2 : ",x2)
-    cities[x1], cities[x2] = cities[x2], cities[x1]
-    items[x1], items[x2] =items[x2], items[x1]
+    citiesNew[x1], citiesNew[x2] = cities[x2], cities[x1]
+    itemsNew[x1], itemsNew[x2] =items[x2], items[x1]
+    return citiesNew, itemsNew
 
-    print(cities)
-    print(items)
-
+def inversionMutation(cities):
+    array = cities
+    l = len(array)
+    r1 = random.randint(0, l)
+    r2 = random.randint(0,l)
+    while (r1 >= r2):
+        r1 = random.randint(0, l)
+        r2 = random.randint(0, l)
+    mid = r1 + ((r2 + 1) - r1) / 2
+    endCount = r2
+    for i in range(r1, int(mid)):
+        tmp = array[i]
+        array[i] = array[endCount]
+        array[endCount] = tmp
+        endCount = endCount - 1
+    return(array)
 # If thief didn't collect any item, he picks an item randomly
 def is_any_item(items):
     if 1 not in items:
@@ -168,44 +228,45 @@ def calculateFitness(cities,items,item_value,distances):
     # Calculation of fitness value
     fitness = (1 / total_profit) + penalty
 
-    return fitness
+    return total_profit
     '''print(total_profit)
     print(penalty)
     print(fitness)'''
 if __name__ == '__main__':
-
     # Read benchmark dataset and set variables
-    file_name="st70_n69_uncorr_10.ttp"
+    file_name = "st70_n69_uncorr_10.ttp"
     instance = Fitness(file_name)
-
 
     # İlk şehirden item alınmayacak
     # Cities üzerinden crossover ve mutasyon yapılacak ama item da aynı şekilde değişecek
 
     # Initialization of TSP solution (permutation representation)
     # !!!!İlk şehir her zaman 1. şehir
-    tour = list(range(2, instance.dimension+1))
+    tour = list(range(2, instance.dimension + 1))
     random.shuffle(tour)
-    tour2 = list(range(2, instance.dimension+1))
+    tour2 = list(range(2, instance.dimension + 1))
     random.shuffle(tour2)
     first_city = [1]
-    cities1 = first_city+tour
-    cities2 = first_city+tour2
-    print("Cities 1 : "+str(cities1))
-    print("Cities 2 : "+str(cities2))
-    #Initialization of KP solution (binary representation)
-    #!!!! İlk şehirden item alınmayacak
+    cities1 = first_city + tour
+    cities2 = first_city + tour2
+
+
+
+
+    # Initialization of KP solution (binary representation)
+    # !!!! İlk şehirden item alınmayacak
     initial_items = list(numpy.random.randint(2, size=instance.number_of_items))
-    items = [0]+initial_items
-    print("Items : " +str(items))
+    items1 = [0] + initial_items
 
     initial_items2 = list(numpy.random.randint(2, size=instance.number_of_items))
-    items2 = [0]+initial_items2
-    print("Items2 : " +str(items2))
+    items2 = [0] + initial_items2
 
-    
+
+
+
     # Check if thief collect an item or not
-    is_any_item(items)
+    is_any_item(items1)
+    is_any_item(items2)
 
     ##crossoverOrdered(cities1,cities2,items,items2)
     ##exchangeMutation(cities1,items)
@@ -221,7 +282,43 @@ if __name__ == '__main__':
 
     # calculates all distances
     distances = calculate_distances(coordinates)
+    print("Cities 1 : ", cities1)
+    print("Items : ", items1)
+    profit1=calculateFitness(cities1, items1, item_value, distances)
+    print("Calculated fitness for cities 1 : ", profit1)
+    print("Cities 2 : ", cities2)
+    print("Items 2: ", items2)
+    profit2= calculateFitness(cities2, items2, item_value, distances)
+    print("Calculated fitness for cities 2 : ", profit2 )
 
-    print("Calculated fitness for cities 1 : ",calculateFitness(cities1,items,item_value,distances))
+
+    for i in range(100):
+        print("----------------------------------------------------------------------------------------------")
+        cities_child1, cities_child2, items_child1, items_child2 = crossoverOrdered(cities1, cities2, items1, items2)
+        profit_child1 = calculateFitness(cities_child1, items_child1, item_value, distances)
+        profit_child2 = calculateFitness(cities_child2, items_child2, item_value, distances)
+        print("Calculated fitness for cities child 1 : ",profit_child1)
+        print("Calculated fitness for cities child 2 : ",profit_child2)
+    
+        cities_child1,items_child1 = exchangeMutation(cities_child1,items_child1)
+        profit_child1=calculateFitness(cities_child1, items_child1, item_value, distances)
+        print("Calculated fitness for cities child 1 : ", profit_child1)
+        cities_child2, items_child2 = exchangeMutation(cities_child2, items_child2)
+        profit_child2 = calculateFitness(cities_child2, items_child2, item_value, distances)
+        print("Calculated fitness for cities child 2 : ", profit_child2)
+
+        if profit_child1>profit1:
+            cities1=cities_child1
+            items1=items_child1
+            profit1=profit_child1
+            print("***Child 1 is new parent***")
+        if profit_child2>profit2:
+            cities2=cities_child2
+            items2 = items_child2
+            profit2=profit_child2
+            print("***Child 2 is new parent***")
+
+    print(calculateFitness(cities1,items1,item_value,distances))
+    print(calculateFitness(cities2, items2,item_value ,distances))
 
 
