@@ -63,8 +63,9 @@ def crossoverOrdered(ind1, ind2, items,items2):
     adderIndex1=a+4
     while checker:
         if counter == size:       
-            counter=0
-      
+            counter=1
+        elif counter== 0:
+            counter=counter+1
         if ind2[counter] not in subsequence1 :
             temp1[adderIndex1] = ind2[counter]
             itemsNew[adderIndex1] =items[ind1.index(ind2[counter])]
@@ -92,10 +93,12 @@ def crossoverOrdered(ind1, ind2, items,items2):
         if adderIndex2 ==a:
             checker2=False
         counter2=counter2+1
+    print(temp1)
     return ind1, ind2 ,itemsNew ,itemsNew2
 def crossoverPartialMapped(ind1, ind2, items,items2):
     size = min(len(ind1), len(ind2))
-    a=random.randint(0,size-5)
+    #a=random.randint(0,size-5)
+    a=2
     subsequence1=ind1[a:a+4]
     subsequence2=ind2[a:a+4]
     temp1=[0]*size
@@ -104,8 +107,8 @@ def crossoverPartialMapped(ind1, ind2, items,items2):
     itemsNew2=[0]*size
     temp1[a:a+4] = subsequence2
     temp2[a:a+4] = subsequence1
-    itemsNew[a:a+4]=items2[a:a+4]
-    itemsNew2[a:a+4]=items[a:a+4]
+    itemsNew[a:a+4]=items[ind1.index(subsequence2[0])],items[ind1.index(subsequence2[1])],items[ind1.index(subsequence2[2])],items[ind1.index(subsequence2[3])]
+    itemsNew2[a:a+4]=items2[ind2.index(subsequence1[0])],items2[ind2.index(subsequence1[1])],items2[ind2.index(subsequence1[2])],items2[ind2.index(subsequence1[3])]
     checker=True
     counter=a+4
     adderIndex1=a+4
@@ -117,7 +120,7 @@ def crossoverPartialMapped(ind1, ind2, items,items2):
             while(temporary  in subsequence2):
                 temporary=subsequence1[subsequence2.index(temporary)]
         temp1[adderIndex1] = temporary
-       #düzeltilecek ----- itemsNew[adderIndex1] =items[ind1.index(ind2[counter])]
+        itemsNew[adderIndex1] =items[ind1.index(temporary)]
         if adderIndex1 ==size-1:
                 adderIndex1=0
         else:
@@ -137,7 +140,7 @@ def crossoverPartialMapped(ind1, ind2, items,items2):
             while(temporary  in subsequence1):
                 temporary=subsequence2[subsequence1.index(temporary)]
         temp2[adderIndex2] = temporary
-       #düzeltilecek ----- itemsNew[adderIndex1] =items[ind1.index(ind2[counter])]
+        itemsNew2[adderIndex2] =items2[ind2.index(temporary)]
         if adderIndex2 ==size-1:
                 adderIndex2=0
         else:
@@ -145,7 +148,7 @@ def crossoverPartialMapped(ind1, ind2, items,items2):
         if adderIndex2 ==a:
             checker2=False
         counter2=counter2+1
-    return temp1,temp2
+    return temp1,temp2,itemsNew,itemsNew2
 # Calculates distance of each city and stores these values in 2-D array
 def calculate_distances(coordinates):
     size = len(coordinates)
@@ -212,7 +215,10 @@ def calculateFitness(cities,items,item_value,distances):
             total_price += item_value[cities[index] - 2][0]
 
         # Speed of thief is calculated according to formula.
-        speed = instance.max_speed - (total_weight * (instance.max_speed - instance.min_speed)
+        if total_weight > instance.capacity_of_knapsack:
+            speed= instance.min_speed
+        else:
+            speed = instance.max_speed - (total_weight * (instance.max_speed - instance.min_speed)
                                       / instance.capacity_of_knapsack)
         # Spent time between two cities are added to total time.
         time += distance / speed
@@ -292,31 +298,47 @@ if __name__ == '__main__':
     print("Calculated fitness for cities 2 : ", profit2 )
 
 
-    for i in range(100):
+    for i in range(100000):
         print("----------------------------------------------------------------------------------------------")
-        cities_child1, cities_child2, items_child1, items_child2 = crossoverOrdered(cities1, cities2, items1, items2)
+        '''       cities_child1, cities_child2, items_child1, items_child2 = crossoverOrdered(cities1, cities2, items1, items2)
+        cities_child1,items_child1 = exchangeMutation(cities_child1,items_child1)
+        cities_child2, items_child2 = exchangeMutation(cities_child2, items_child2)
+
         profit_child1 = calculateFitness(cities_child1, items_child1, item_value, distances)
         profit_child2 = calculateFitness(cities_child2, items_child2, item_value, distances)
         print("Calculated fitness for cities child 1 : ",profit_child1)
-        print("Calculated fitness for cities child 2 : ",profit_child2)
-    
+        print("Calculated fitness for cities child 2 : ",profit_child2)'''
+
+
+        cities_child1,cities_child2,items_child1,items_child2=crossoverPartialMapped(cities1,cities2,items1,items2)
         cities_child1,items_child1 = exchangeMutation(cities_child1,items_child1)
+        cities_child2,items_child2 = exchangeMutation(cities_child2, items_child2)
         profit_child1=calculateFitness(cities_child1, items_child1, item_value, distances)
-        print("Calculated fitness for cities child 1 : ", profit_child1)
-        cities_child2, items_child2 = exchangeMutation(cities_child2, items_child2)
         profit_child2 = calculateFitness(cities_child2, items_child2, item_value, distances)
+        print("Calculated fitness for cities child 1 : ", profit_child1)
         print("Calculated fitness for cities child 2 : ", profit_child2)
 
-        if profit_child1>profit1:
-            cities1=cities_child1
-            items1=items_child1
-            profit1=profit_child1
-            print("***Child 1 is new parent***")
-        if profit_child2>profit2:
-            cities2=cities_child2
+        if profit_child1 > profit1:
+            cities1 = cities_child1
+            items1 = items_child1
+            profit1 = profit_child1
+            print("Child 1 is new parent")
+        elif profit_child1 > profit2:
+            cities2 = cities_child1
+            items2 = items_child1
+            profit2 = profit_child1
+            print("Child 1 is new parent")
+
+        if profit_child2 > profit2:
+            cities2 = cities_child2
             items2 = items_child2
-            profit2=profit_child2
-            print("***Child 2 is new parent***")
+            profit2 = profit_child2
+            print("Child 2 is new parent")
+        elif profit_child2 > profit1:
+            cities1 = cities_child2
+            items1 = items_child2
+            profit1 = profit_child2
+            print("Child 2 is new parent")
 
     print(calculateFitness(cities1,items1,item_value,distances))
     print(calculateFitness(cities2, items2,item_value ,distances))
