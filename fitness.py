@@ -97,8 +97,7 @@ def crossoverOrdered(ind1, ind2, items,items2):
     return ind1, ind2 ,itemsNew ,itemsNew2
 def crossoverPartialMapped(ind1, ind2, items,items2):
     size = min(len(ind1), len(ind2))
-    #a=random.randint(0,size-5)
-    a=2
+    a=random.randint(0,size-5)
     subsequence1=ind1[a:a+4]
     subsequence2=ind2[a:a+4]
     temp1=[0]*size
