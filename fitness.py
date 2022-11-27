@@ -1,10 +1,23 @@
 from __future__ import division
-from ast import While
-from cgi import print_form
-from itertools import count
-from pydoc import doc
+
+import math
+
 import numpy
 import random
+
+import xlsxwriter
+
+global item_value
+global coordinates
+global distances
+
+class Solution:
+    def __init__(self,cities,items):
+        self.cities =cities
+        self.items = items
+        self.fitness, self.profit = calculateFitness(self.cities, self.items, item_value, distances,itemsPerCity)
+
+
 class Fitness:
  def __init__(self, file_name):
         self.tsp = False
@@ -44,63 +57,7 @@ class Fitness:
                     self.xy.append(city)
                 if self.knapsack and 'ITEMS SECTION (INDEX, PROFIT, WEIGHT, ASSIGNED NODE NUMBER):' not in line:
                     j, p, w, i = eval(line.replace(' ', ','))
-                    self.wp.insert(i - 2, [p, w])   
-def crossoverOrdered(ind1, ind2, items,items2):
-    size = min(len(ind1), len(ind2))
-    #buradaki random subsequence lenghtin kaç olacağı sorulacak (4)
-    a=random.randint(0,size-4)
-    print("Random index " + str(a))
-    subsequence1=ind1[a:a+4]
-    subsequence2=ind2[a:a+4]
-    temp1=[0]*size
-    temp2=[0]*size
-    itemsNew=[0]*size
-    itemsNew2=[0]*size
-    temp1[a:a+4] = subsequence1
-    temp2[a:a+4] = subsequence2
-    itemsNew[a:a+4]=items[a:a+4]
-    itemsNew2[a:a+4]=items2[a:a+4]
-    checker=True
-    counter=a+4
-    adderIndex1=a+4
-    while checker:
-        if counter == size:       
-            counter=0
-      
-        if ind2[counter] not in subsequence1 :
-            temp1[adderIndex1] = ind2[counter]
-            itemsNew[adderIndex1] =items[ind1.index(ind2[counter])]
-            if adderIndex1 ==size-1:
-                adderIndex1=0
-            else:
-                adderIndex1=adderIndex1+1
-        if adderIndex1 ==a:
-            checker=False
-        counter=counter+1
-
-    checker2=True
-    counter2=a+4
-    adderIndex2=a+4
-    while checker2:
-        if counter2 == size:
-            counter2=0
-        if ind1[counter2] not in subsequence2 :
-            temp2[adderIndex2] = ind1[counter2]
-            itemsNew2[adderIndex2] =items2[ind2.index(ind1[counter2])]
-            if adderIndex2 ==size-1:
-                adderIndex2=0
-            else:
-                adderIndex2=adderIndex2+1
-        if adderIndex2 ==a:
-            checker2=False
-        counter2=counter2+1
-    print("Subsequence1 : " + str(subsequence1))
-    print("Subsequence2 : " + str(subsequence2))
-    print("Result1 : " + str(temp1))
-    print("Result2 : " + str(temp2))
-    print("Items New  : " + str(itemsNew))
-    print("Items New2  : " + str(itemsNew2))
-    return ind1, ind2 ,itemsNew ,itemsNew2
+                    self.wp.append([p, w, i])
 
 # Calculates distance of each city and stores these values in 2-D array
 def calculate_distances(coordinates):
@@ -116,23 +73,8 @@ def calculate_distances(coordinates):
         distances.append(row)
 
     return distances
-def exchangeMutation(cities,items):
-    geneNumbers = len(cities)
-    x1, x2 = numpy.random.choice(range(geneNumbers), 2, False)
-    print("Selected index :  ",x1)
-    print("Selected index2 : ",x2)
-    cities[x1], cities[x2] = cities[x2], cities[x1]
-    items[x1], items[x2] =items[x2], items[x1]
 
-    print(cities)
-    print(items)
-
-# If thief didn't collect any item, he picks an item randomly
-def is_any_item(items):
-    if 1 not in items:
-        i = random.randint(1, len(items)-1)
-        items[i] = 1
-def calculateFitness(cities,items,item_value,distances):
+def calculateFitness(cities,items,item_value,distances, itemsPerCity):
     # total_weight and total_price calculated according to collected items.
     total_weight = 0
     total_price = 0
@@ -147,12 +89,16 @@ def calculateFitness(cities,items,item_value,distances):
             distance = distances[cities[index] - 1][cities[index + 1] - 1]
 
         # If an item is collected total_weight and total_price variables are updated.
-        if items[index] == 1:
-            total_weight += item_value[cities[index] - 2][1]
-            total_price += item_value[cities[index] - 2][0]
+        for i in range(itemsPerCity):
+            if items[index * itemsPerCity + i] == 1:
+                total_weight += item_value[(cities[index] - 2) * itemsPerCity + i][1]
+                total_price += item_value[(cities[index] - 2) * itemsPerCity + i][0]
 
         # Speed of thief is calculated according to formula.
-        speed = instance.max_speed - (total_weight * (instance.max_speed - instance.min_speed)
+        if total_weight > instance.capacity_of_knapsack:
+            speed= instance.min_speed
+        else:
+            speed = instance.max_speed - (total_weight * (instance.max_speed - instance.min_speed)
                                       / instance.capacity_of_knapsack)
         # Spent time between two cities are added to total time.
         time += distance / speed
@@ -168,60 +114,302 @@ def calculateFitness(cities,items,item_value,distances):
     # Calculation of fitness value
     fitness = (1 / total_profit) + penalty
 
-    return fitness
+    return fitness, total_profit
     '''print(total_profit)
     print(penalty)
     print(fitness)'''
-if __name__ == '__main__':
 
-    # Read benchmark dataset and set variables
-    file_name="st70_n69_uncorr_10.ttp"
+def crossoverOrdered(ind1, ind2, items, items2,itemsPerCity):
+
+    size = min(len(ind1), len(ind2))
+    b=random.randint(1,int(size/2))
+    a=random.randint(2,size-(b+1))
+    subsequence1=ind1[a:a+b]
+    subsequence2=ind2[a:a+b]
+    temp1=[0]*size
+    temp2=[0]*size
+    itemsNew = [0] * size * itemsPerCity
+    itemsNew2 = [0] * size * itemsPerCity
+    temp1[a:a+b] = subsequence1
+    temp2[a:a+b] = subsequence2
+    itemsNew[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity]=items[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity]
+    itemsNew2[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity]=items2[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity]
+
+    checker=True
+    counter=a+b
+    adderIndex1=a+b
+    while checker:
+        if counter == size:
+            temp1[0]=1
+            itemsNew[0]=0
+            counter = 1
+        if counter == 0:
+            temp1[0]=1
+            itemsNew[0]=0
+            counter=counter+1
+        if adderIndex1 == 0:
+            adderIndex1 =adderIndex1+1
+        if ind2[counter] not in subsequence1 :
+            temp1[adderIndex1] = ind2[counter]
+            for i in range(itemsPerCity):
+                itemsNew[adderIndex1*itemsPerCity+i] =items2[ind2.index(ind2[counter])*itemsPerCity+i]
+            if adderIndex1 ==size-1:
+                adderIndex1=0
+            else:
+                adderIndex1=adderIndex1+1
+        if adderIndex1 ==a:
+            checker=False
+        counter=counter+1
+
+    checker2=True
+    counter2=a+b
+    adderIndex2=a+b
+    while checker2:
+        if counter2 == size:
+            temp2[0]=1
+            itemsNew2[0]=0
+            counter2=1
+        if counter2 == 0:
+            temp2[0]=1
+            itemsNew2[0]=0
+            counter2=counter2+1
+        if adderIndex2 == 0:
+            adderIndex2 =adderIndex2+1
+        if ind1[counter2] not in subsequence2 :
+            temp2[adderIndex2] = ind1[counter2]
+            for i in range(itemsPerCity):
+                itemsNew2[adderIndex2 * itemsPerCity + i] = items[ind1.index(ind1[counter2]) * itemsPerCity + i]
+            if adderIndex2 ==size-1:
+                adderIndex2=0
+            else:
+                adderIndex2=adderIndex2+1
+        if adderIndex2 ==a:
+            checker2=False
+        counter2=counter2+1
+
+    return temp1, temp2, itemsNew, itemsNew2
+
+
+def crossoverPartialMapped(ind1, ind2, items, items2,itemsPerCity):
+    size = min(len(ind1), len(ind2))
+    b = random.randint(1, int(size / 2))
+    a = random.randint(2, size - (b + 1))
+    subsequence1 = ind1[a:a + b]
+    subsequence2 = ind2[a:a + b]
+    temp1 = [0] * size
+    temp2 = [0] * size
+    itemsNew = [0]*size*itemsPerCity
+    itemsNew2 = [0]*size*itemsPerCity
+    temp1[a:a+b] = subsequence2
+    temp2[a:a+b] = subsequence1
+    itemsNew[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity] = items2[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity]
+    itemsNew2[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity] = items[a*itemsPerCity:a*itemsPerCity+b*itemsPerCity]
+    checker=True
+    counter=a+b
+    adderIndex1=a+b
+    while checker:
+        if counter == size:
+            counter=0
+        temporary=ind1[counter]
+        if temporary  in subsequence2 :
+            while(temporary  in subsequence2):
+                temporary=subsequence1[subsequence2.index(temporary)]
+        temp1[adderIndex1] = temporary
+        for i in range(itemsPerCity):
+            itemsNew[adderIndex1*itemsPerCity+i] =items[ind1.index(temporary)*itemsPerCity+i]
+        if adderIndex1 ==size-1:
+                adderIndex1=0
+        else:
+            adderIndex1=adderIndex1+1
+        if adderIndex1 ==a:
+            checker=False
+        counter=counter+1
+
+    checker2=True
+    counter2=a+b
+    adderIndex2=a+b
+    while checker2:
+        if counter2 == size:
+            counter2=0
+        temporary=ind2[counter2]
+        if temporary  in subsequence1 :
+            while(temporary  in subsequence1):
+                temporary=subsequence2[subsequence1.index(temporary)]
+        temp2[adderIndex2] = temporary
+        for i in range(itemsPerCity):
+            itemsNew2[adderIndex2*itemsPerCity+i] =items2[ind2.index(temporary)*itemsPerCity+i]
+        if adderIndex2 ==size-1:
+                adderIndex2=0
+        else:
+            adderIndex2=adderIndex2+1
+        if adderIndex2 ==a:
+            checker2=False
+        counter2=counter2+1
+    return temp1,temp2,itemsNew,itemsNew2
+
+
+
+def exchangeMutation(cities,items, itemsPerCity):
+    geneNumbers = len(cities)
+    itemsNew=[0]*geneNumbers*itemsPerCity
+    citiesNew=[0]*geneNumbers
+    itemsNew[0:geneNumbers*itemsPerCity]=items[0:geneNumbers*itemsPerCity]
+    citiesNew[0:geneNumbers]=cities[0:geneNumbers]
+    x1, x2 = numpy.random.choice(range(1,geneNumbers), 2, replace=False)
+    citiesNew[x1], citiesNew[x2] = cities[x2], cities[x1]
+    for i in range(itemsPerCity):
+        itemsNew[x1 * itemsPerCity + i], itemsNew[x2 * itemsPerCity + i] = items[x2 * itemsPerCity + i], items[x1 * itemsPerCity + i]
+    return citiesNew, itemsNew
+
+
+def inversionMutation(cities, items, itemsPerCity):
+    array = cities
+    array1 = items
+    l = len(array)
+    r1, r2 = numpy.random.choice(range(1, l-1), 2, replace=False)
+    while (r1 >= r2):
+        r1, r2 = numpy.random.choice(range(1, l-1), 2, replace=False)
+    mid = r1 + ((r2 + 1) - r1) / 2
+    endCount = r2
+    for i in range(r1, int(mid)):
+        tmp = array[i]
+        array[i] = array[endCount]
+        array[endCount] = tmp
+        for j in range(itemsPerCity):
+            tmp = array1[i * itemsPerCity + j]
+            array1[i * itemsPerCity + j] = array1[endCount * itemsPerCity + j]
+            array1[endCount * itemsPerCity + j] = tmp
+        endCount = endCount - 1
+    return(array, array1)
+
+
+# If thief didn't collect any item, he picks an item randomly
+def is_any_item(items):
+    if 1 not in items:
+        i = random.randint(1, len(items)-1)
+        items[i] = 1
+
+
+
+def updatePopulation(solutions,k):
+    '''solutions = sorted(solutions, key=lambda solutions: solutions.fitness, reverse=True)
+    while len(solutions)!=100:
+        solutions.pop()
+    return solutions'''
+    solutions = sorted(solutions, key=lambda solutions: solutions.fitness)
+    positives = list(filter(lambda x: (x.fitness>= 0), solutions))
+    negatives = list(filter(lambda x: (x.fitness < 0), solutions))
+    solutions= positives+negatives
+    while len(solutions) != k:
+        solutions.pop()
+    return solutions
+
+
+def selectParents(solutions):
+    group1 = []
+    group2 = []
+    r = numpy.random.choice(range(0, len(solutions)), 8, replace=False)
+    for i in range(0, 4):
+        group1.append(solutions[r[i]])
+    for i in range(4, 8):
+        group2.append(solutions[r[i]])
+
+    group1 = sorted(group1, key=lambda group1: group1.fitness)
+    positives = list(filter(lambda x: (x.fitness >= 0), group1))
+    negatives = list(filter(lambda x: (x.fitness < 0), group1))
+    group1 = positives + negatives
+
+    group2 = sorted(group2, key=lambda group2: group2.fitness)
+    positives = list(filter(lambda x: (x.fitness >= 0), group2))
+    negatives = list(filter(lambda x: (x.fitness <0), group2))
+    group2 = positives + negatives
+    parent1 = Solution(group1[0].cities.copy(),group1[0].items.copy())
+    parent2 = Solution(group2[0].cities.copy(),group2[0].items.copy())
+
+    '''while parent1 == parent2:
+        group1 = []
+        group2 = []
+        for i in range(0, 4):
+            group1.append(solutions[random.randint(0, len(solutions) - 1)])
+            group2.append(solutions[random.randint(0, len(solutions) - 1)])
+        group1 = sorted(group1, key=lambda group1: group1.fitness, reverse=True)
+        group2 = sorted(group2, key=lambda group2: group2.fitness, reverse=True)
+        parent1 = group1[0]
+        parent2 = group2[0]'''
+    return parent1, parent2
+
+
+if __name__ == '__main__':
+    file1 = open("eil51_n50_uncorr_10_100_90_10_oi.txt", "a")
+    file_name = "eil51_n50_uncorr_10.ttp"
     instance = Fitness(file_name)
 
-
-    # İlk şehirden item alınmayacak
-    # Cities üzerinden crossover ve mutasyon yapılacak ama item da aynı şekilde değişecek
-
-    # Initialization of TSP solution (permutation representation)
-    # !!!!İlk şehir her zaman 1. şehir
-    tour = list(range(2, instance.dimension+1))
-    random.shuffle(tour)
-    tour2 = list(range(2, instance.dimension+1))
-    random.shuffle(tour2)
-    first_city = [1]
-    cities1 = first_city+tour
-    cities2 = first_city+tour2
-    print("Cities 1 : "+str(cities1))
-    print("Cities 2 : "+str(cities2))
-    #Initialization of KP solution (binary representation)
-    #!!!! İlk şehirden item alınmayacak
-    initial_items = list(numpy.random.randint(2, size=instance.number_of_items))
-    items = [0]+initial_items
-    print("Items : " +str(items))
-
-    initial_items2 = list(numpy.random.randint(2, size=instance.number_of_items))
-    items2 = [0]+initial_items2
-    print("Items2 : " +str(items2))
-
-    
-    # Check if thief collect an item or not
-    is_any_item(items)
-
-    ##crossoverOrdered(cities1,cities2,items,items2)
-    ##exchangeMutation(cities1,items)
-    # coordinates variable stores x and y values of each city. item_value variable stores weight and price of each item.
-    # şehir sıralaması 1 2 3
     coordinates = instance.xy
     item_value = instance.wp
-
-    # total_weight and total_price calculated according to collected items.
-    total_weight = 0
-    total_price = 0
-    time = 0
-
-    # calculates all distances
     distances = calculate_distances(coordinates)
+    itemsPerCity = math.ceil(instance.number_of_items/instance.dimension)
+    a = instance.wp
+    instance.wp = sorted(a, key=lambda a: a[2])
+    for p in range(10):
+        k = 100
+        probabiltyCrossover = 90
+        probabiltyMutation = 10
+        solutions = []
+        for i in range(k):
+            tour = list(range(2, instance.dimension + 1))
+            random.shuffle(tour)
+            first_city = [1]
+            cities = first_city + tour
 
-    print("Calculated fitness for cities 1 : ",calculateFitness(cities1,items,item_value,distances))
+            # Initialization of KP solution (binary representation)
 
+            initial_items = list(numpy.random.randint(2, size=instance.number_of_items))
+            items = [0]*itemsPerCity + initial_items
+            # Check if thief collect an item or not
+            is_any_item(items)
+            solutions.append(Solution(cities, items))
 
+        for counter in range(280000):
+
+            isCrossover=False
+            isMutation=False
+            parent1, parent2 = selectParents(solutions)
+            cities1, cities2, items1, items2 = parent1.cities.copy(), parent2.cities.copy(), parent1.items.copy(), parent2.items.copy()
+            if random.randint(1, 101) < probabiltyCrossover:
+                cities1, cities2, items1, items2 = crossoverOrdered(parent1.cities.copy(), parent2.cities.copy(), parent1.items.copy(), parent2.items.copy(), itemsPerCity)
+                isCrossover=True
+
+            if random.randint(1, 101) < probabiltyMutation:
+                cities1, items1 = inversionMutation(cities1.copy(), items1.copy(),itemsPerCity)
+                cities2, items2 = inversionMutation(cities2.copy(), items2.copy(),itemsPerCity)
+                isMutation=True
+            child1 = Solution(cities1.copy(),items1.copy())
+            child2 = Solution(cities2.copy(),items2.copy())
+
+            if isCrossover or isMutation:
+                different=0
+                for i in solutions:
+                    if i.fitness!=child1.fitness:
+                        different+=1
+                    else:
+                        break
+                if different==len(solutions):
+                    solutions.append(child1)
+                different = 0
+                for i in solutions:
+                    if i.fitness != child2.fitness:
+                        different += 1
+                    else:
+                        break
+                if different ==len(solutions):
+                    solutions.append(child2)
+            print(counter)
+            solutions=updatePopulation(solutions,k)
+        file1.write("Iteration "+str(p+1)+"\n")
+        file1.write("Fitness value: "+str(solutions[0].fitness)+"\n")
+        file1.write("Profit value: " + str(solutions[0].profit) + "\n")
+        file1.write("Cities: " + str(solutions[0].cities) + "\n")
+        file1.write("Items: " + str(solutions[0].items) + "\n")
+        file1.write("--------------------------------------------------\n")
+
+    file1.close()
